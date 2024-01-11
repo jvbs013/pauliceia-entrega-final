@@ -393,6 +393,7 @@ export default {
           this.loading.close()
         }
       } catch (error) {
+      console.log(error);
         if(error.response != undefined && error.response.data != undefined && error.response.data[1][0].alertMsg != undefined) {
 
           this.$alert(error.response.data[1][0].alertMsg, 'Erro', {

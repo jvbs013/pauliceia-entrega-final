@@ -100,6 +100,9 @@ export default {
         "btnText": "Login",
         "terms": "If you sign in with the social network, you automatically agree to the terms of the project.",
         "lbReadme": "read the terms here",
+        "forgotPassword": "Forgot Password",
+        "sendCode": "Send code",
+        "resetPassword": "Recover Password",
         "msg": {
             "success": "WELCOME",
             "err404": "<strong>Email</strong> or <strong>password</strong> incorrect!",

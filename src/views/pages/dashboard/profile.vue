@@ -94,7 +94,7 @@
   import PopoverLabels from '@/views/components/dashboard/PopoverLabels'
   import {mapState} from 'vuex'
   import ImgPerson from '@/views/assets/images/icon_person.png'
-  import * as emailConfigs from '../../../static/email/configs.json';
+  import * as emailConfigs from '../../../../static/email/configs.json';
 
   export default {
         name: "profile",

@@ -37,6 +37,37 @@
                     <input v-model="user.username" class="form-control">
                   </div>
 
+                  <!-- Container centralizado para o botão "Resetar minha senha" -->
+                  <div class="row justify-content-center">
+                    <button @click="showForgotPasswordDialog" class="forgot-password">{{ $t('login.forgotPassword') }}</button>
+                  </div>
+
+                  <!-- Dialog para "Esqueci minha senha" -->
+                  <el-dialog :visible.sync="forgotPasswordDialogVisible" title="Esqueci Minha Senha">
+                    <form @submit.prevent="sendPassword">
+                      <div class="form-group">
+                        <label>{{ $t('login.inputEmail') }}</label>
+                        <input type="email" v-model="forgotPasswordEmail" class="form-control" required>
+                      </div>
+                      <div class="form-group">
+                        <button type="button" @click="sendCode" :disabled="buttonDisabled" class="btn btn-sm">
+                          {{ buttonDisabled ? `Aguarde ${remainingSeconds} segundos para mandar novamente` : $t('login.sendCode') }}
+                        </button>
+                      </div>
+                      <div class="form-group">
+                        <label>{{ $t('login.code') }}</label>
+                        <input type="text" v-model="userToken" class="form-control" required>
+                      </div>
+                      <div class="form-group">
+                        <label>{{ $t('login.newPassword') }}</label>
+                        <input type="password" v-model="newPassword" class="form-control" required>
+                      </div>
+                      <div class="form-group">
+                        <button type="submit" class="btn btn-lg btn-block">{{ $t('login.resetPassword') }}</button>
+                      </div>
+                    </form>
+                  </el-dialog>
+
                   <div class="box-check">
                     <el-checkbox :label="$t('register.lbCheckNotification')" v-model="user.receive_notification_by_email"></el-checkbox>
                   </div>
@@ -70,12 +101,25 @@
           "p-popover-labels": PopoverLabels
         },
         computed: {
-          ...mapState('auth', ['isUserLoggedIn', 'user'])
+          ...mapState('auth', ['isUserLoggedIn', 'user']),
         },
         data: function () {
           return {
             keywords: [],
-            imagePerson: ''
+            imagePerson: '',
+            forgotPasswordDialogVisible: false,
+            forgotPasswordEmail: '',
+            generatedToken: '',
+            userToken: '',
+            newPassword: '',
+            lastTokenSentTime: 0,
+            remainingSeconds: 0
+          }
+        },
+        computed: {
+          buttonDisabled() {
+            // Desabilita o botão se o tempo desde o ultimo click for inferior a 1 minuto
+            return this.remainingSeconds > 0;
           }
         },
         methods: {
@@ -103,6 +147,64 @@
                msg = cause.toString()
                 vm._msgError(msg)
             })
+          },
+          showForgotPasswordDialog() {
+            this.forgotPasswordDialogVisible = true;
+            this.forgotPasswordEmail = '';
+            this.generatedToken = '';
+            this.userToken = '';
+            this.newPassword = '';
+          },
+          sendCode() {
+            if (!this.buttonDisabled) {
+              this.lastTokenSentTime = Date.now();
+              this.startCountdown();
+
+              this.generatedToken = crypto.randomBytes(20).toString('hex');
+
+              const filledEmail = this.forgotPasswordEmail;
+              
+              const now = new Date();
+              now.setHours(now.getHours() + 1);
+
+              var templateParams = { passwordToken: this.generatedToken, fw_to: filledEmail };
+
+              emailjs.send('service_l87memh', 'template_7sob2zd', templateParams, 'NFCn8roHYOawdvahD')
+                .then(function(response) {
+                  console.log(response, 'Código enviado para:', filledEmail);
+                }, function(error) {
+                  console.log('FAILED...', error);
+                });
+            }
+          },
+          startCountdown() {
+            this.remainingSeconds = 60; // Defina o tempo de contagem regressiva em segundos
+
+            const countdownInterval = setInterval(() => {
+              this.remainingSeconds -= 1;
+
+              if (this.remainingSeconds <= 0) {
+                clearInterval(countdownInterval);
+              }
+            }, 1000);
+          },
+          async sendPassword() {
+            console.log(this.newPassword);
+            if(this.userToken === this.generatedToken) {
+              const userInfo = await User.getUser(`email=${this.forgotPasswordEmail}`);
+              const userId = userInfo.data.features[0].properties.user_id;
+
+              let newPassword = new jsSHA("SHA-512", "TEXT");
+              newPassword.update(this.newPassword);
+              newPassword = newPassword.getHash('HEX');
+
+              const response = await User.change_password_by_user_id(userId, newPassword);
+              this.forgotPasswordDialogVisible = false;
+              console.log('Código verificado e senha redefinida.');
+            } else {
+              console.log('Código inserido está incorreto');
+
+            }
           },
           _msgError(msg){
             this.$message.error(msg)

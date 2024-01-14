@@ -52,17 +52,23 @@
 
           <!-- Dialog para "Esqueci minha senha" -->
           <el-dialog :visible.sync="forgotPasswordDialogVisible" title="Esqueci Minha Senha">
-            <form @submit.prevent="sendResetCode">
+            <form @submit.prevent="sendPassword">
               <div class="form-group">
-                <label>Email:</label>
+                <label>{{ $t('login.inputEmail') }}</label>
                 <input type="email" v-model="forgotPasswordEmail" class="form-control" required>
               </div>
               <div class="form-group">
-                <button type="button" @click="sendCode" class="btn btn-sm">{{ $t('login.sendCode') }}</button>
+                <button type="button" @click="sendCode" :disabled="buttonDisabled" class="btn btn-sm">
+                  {{ buttonDisabled ? `Aguarde ${remainingSeconds} segundos para mandar novamente` : $t('login.sendCode') }}
+                </button>
               </div>
               <div class="form-group">
-                <label>Código:</label>
-                <input type="text" v-model="resetCode" class="form-control" required>
+                <label>{{ $t('login.code') }}</label>
+                <input type="text" v-model="userToken" class="form-control" required>
+              </div>
+              <div class="form-group">
+                <label>{{ $t('login.newPassword') }}</label>
+                <input type="password" v-model="newPassword" class="form-control" required>
               </div>
               <div class="form-group">
                 <button type="submit" class="btn btn-lg btn-block">{{ $t('login.resetPassword') }}</button>
@@ -82,7 +88,8 @@
 <script>
 import User from '@/middleware/User'
 import Terms from '@/views/components/Terms'
-
+import emailjs from '@emailjs/browser';
+import crypto from 'crypto'
 import jsSHA from 'jssha'
 
 export default {
@@ -96,8 +103,18 @@ export default {
       loading: null,
       forgotPasswordDialogVisible: false,
       forgotPasswordEmail: '',
-      resetCode: ''
+      generatedToken: '',
+      userToken: '',
+      newPassword: '',
+      lastTokenSentTime: 0,
+      remainingSeconds: 0
     };
+  },
+  computed: {
+    buttonDisabled() {
+      // Desabilita o botão se o tempo desde o ultimo click for inferior a 1 minuto
+      return this.remainingSeconds > 0;
+    }
   },
   methods: {
     loginSocial(type) {
@@ -155,17 +172,61 @@ export default {
     },
     showForgotPasswordDialog() {
       this.forgotPasswordDialogVisible = true;
+      this.forgotPasswordEmail = '';
+      this.generatedToken = '';
+      this.userToken = '';
+      this.newPassword = '';
     },
     sendCode() {
-      // Lógica para enviar o código para o email fornecido
-      // Aqui você pode implementar a lógica necessária, por exemplo, uma chamada à API
-      console.log('Código enviado para:', this.forgotPasswordEmail);
+      if (!this.buttonDisabled) {
+        this.lastTokenSentTime = Date.now();
+        this.startCountdown();
+
+        this.generatedToken = crypto.randomBytes(20).toString('hex');
+
+        const filledEmail = this.forgotPasswordEmail;
+        
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+
+        var templateParams = { passwordToken: this.generatedToken, fw_to: filledEmail };
+
+        emailjs.send('service_l87memh', 'template_7sob2zd', templateParams, 'NFCn8roHYOawdvahD')
+          .then(function(response) {
+            console.log(response, 'Código enviado para:', filledEmail);
+          }, function(error) {
+            console.log('FAILED...', error);
+          });
+      }
     },
-    sendResetCode() {
-      // Lógica para verificar o código e permitir a redefinição de senha
-      // Aqui você pode implementar a lógica necessária, por exemplo, uma chamada à API
-      console.log('Código verificado e senha redefinida.');
-      this.forgotPasswordDialogVisible = false;
+    startCountdown() {
+      this.remainingSeconds = 60; // Defina o tempo de contagem regressiva em segundos
+
+      const countdownInterval = setInterval(() => {
+        this.remainingSeconds -= 1;
+
+        if (this.remainingSeconds <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+    },
+    async sendPassword() {
+      console.log(this.newPassword);
+      if(this.userToken === this.generatedToken) {
+        const userInfo = await User.getUser(`email=${this.forgotPasswordEmail}`);
+        const userId = userInfo.data.features[0].properties.user_id;
+
+        let newPassword = new jsSHA("SHA-512", "TEXT");
+        newPassword.update(this.newPassword);
+        newPassword = newPassword.getHash('HEX');
+
+        const response = await User.change_password_by_user_id(userId, newPassword);
+        this.forgotPasswordDialogVisible = false;
+        console.log('Código verificado e senha redefinida.');
+      } else {
+        console.log('Código inserido está incorreto');
+
+      }
     },
     _msgBox(title, msg, type) {
       this.$alert(msg, title, {

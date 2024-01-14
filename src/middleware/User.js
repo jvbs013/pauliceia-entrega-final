@@ -34,5 +34,17 @@ export default {
         'Accept': 'application/json; charset=UTF-8'
       }
     })
+  },
+
+  change_password_by_user_id(user_id, new_password){
+    return Api().put('/api/auth/change_password_with_user_id',
+    {
+      headers: {
+        'user_id': user_id,
+        'new_password': new_password,
+        'Content-type': 'application/json',
+        'Accept': 'application/json; charset=UTF-8'
+      }
+    })
   }
 }

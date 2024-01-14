@@ -89,6 +89,7 @@
 import User from '@/middleware/User'
 import Terms from '@/views/components/Terms'
 import emailjs from '@emailjs/browser';
+import * as emailConfigs from '../../../static/email/configs.json';
 import crypto from 'crypto'
 import jsSHA from 'jssha'
 
@@ -191,7 +192,7 @@ export default {
 
         var templateParams = { passwordToken: this.generatedToken, fw_to: filledEmail };
 
-        emailjs.send('service_l87memh', 'template_7sob2zd', templateParams, 'NFCn8roHYOawdvahD')
+        emailjs.send(emailConfigs.SERVICE_ID, emailConfigs.TEMPLATE_ID, templateParams, emailConfigs.PUBLIC_KEY)
           .then(function(response) {
             console.log(response, 'Código enviado para:', filledEmail);
           }, function(error) {

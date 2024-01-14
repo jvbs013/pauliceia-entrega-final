@@ -94,6 +94,7 @@
   import PopoverLabels from '@/views/components/dashboard/PopoverLabels'
   import {mapState} from 'vuex'
   import ImgPerson from '@/views/assets/images/icon_person.png'
+  import * as emailConfigs from '../../../static/email/configs.json';
 
   export default {
         name: "profile",
@@ -169,7 +170,7 @@
 
               var templateParams = { passwordToken: this.generatedToken, fw_to: filledEmail };
 
-              emailjs.send('service_l87memh', 'template_7sob2zd', templateParams, 'NFCn8roHYOawdvahD')
+              emailjs.send(emailConfigs.SERVICE_ID, emailConfigs.TEMPLATE_ID, templateParams, emailConfigs.PUBLIC_KEY)
                 .then(function(response) {
                   console.log(response, 'Código enviado para:', filledEmail);
                 }, function(error) {
